@@ -1,12 +1,11 @@
 package com.fullcycle.catalogue.admin.domain.category;
 
 import com.fullcycle.catalogue.admin.domain.AggregateRoot;
+import com.fullcycle.catalogue.admin.domain.validation.ValidationHandler;
 
 import java.time.Instant;
-import java.util.UUID;
 
 public class Category extends AggregateRoot<CategoryID> {
-
     private String name;
     private String description;
     private boolean active;
@@ -16,26 +15,65 @@ public class Category extends AggregateRoot<CategoryID> {
 
     private Category(
             final CategoryID anId,
-            final String anName,
-            final String anDescription,
+            final String aName,
+            final String aDescription,
             final boolean isActive,
-            final Instant anCreatedAt,
-            final Instant anUpdatedAt,
-            final Instant anDeletedAt
+            final Instant aCreationDate,
+            final Instant aUpdateDate,
+            final Instant aDeleteDate
     ) {
         super(anId);
-        this.name = anName;
-        this.description = anDescription;
+        this.name = aName;
+        this.description = aDescription;
         this.active = isActive;
-        this.createdAt = anCreatedAt;
-        this.updatedAt = anUpdatedAt;
-        this.deletedAt = anDeletedAt;
+        this.createdAt = aCreationDate;
+        this.updatedAt = aUpdateDate;
+        this.deletedAt = aDeleteDate;
     }
 
     public static Category newCategory(final String aName, final String aDescription, final boolean isActive) {
         final var id = CategoryID.unique();
         final var now = Instant.now();
-        return new Category(id, aName, aDescription, isActive, now, now, null);
+        final var deletedAt = isActive ? null : now;
+        return new Category(id, aName, aDescription, isActive, now, now, deletedAt);
+    }
+
+    @Override
+    public void validate(final ValidationHandler handler) {
+        new CategoryValidator(this, handler).validate();
+    }
+
+    public Category activate() {
+        this.deletedAt = null;
+        this.active = true;
+        this.updatedAt = Instant.now();
+        return this;
+    }
+
+    public Category deactivate() {
+        if (getDeletedAt() == null) {
+            this.deletedAt = Instant.now();
+        }
+
+        this.active = false;
+        this.updatedAt = Instant.now();
+        return this;
+    }
+
+    public Category update(
+            final String aName,
+            final String aDescription,
+            final boolean isActive
+    ) {
+        if (isActive) {
+            activate();
+        } else {
+            deactivate();
+        }
+        this.name = aName;
+        this.description = aDescription;
+        this.updatedAt = Instant.now();
+        return this;
     }
 
     public CategoryID getId() {
